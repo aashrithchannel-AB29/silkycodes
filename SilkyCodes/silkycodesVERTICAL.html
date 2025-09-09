@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Silky Codes - Top-Bottom Editor</title>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+  <style>
+    :root {
+      --gold: #E1A140;
+      --puce: #532200;
+      --sand: #EFCFA0;
+      --burnt: #914110;
+      --indigo: #2C2C54;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--sand);
+      color: var(--puce);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background-color: var(--puce);
+      color: var(--gold);
+      text-align: center;
+      padding: 20px;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+    .editor-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 15px;
+    }
+    .editor-wrapper, .output {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--puce);
+      border-radius: 8px;
+      background: white;
+      overflow: hidden;
+    }
+    .section-label {
+      background: var(--puce);
+      color: var(--gold);
+      padding: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+    .editor-box {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      min-height: 300px; /* taller editor */
+    }
+    .line-numbers {
+      background-color: var(--indigo);
+      color: var(--gold);
+      text-align: right;
+      padding: 10px;
+      font-family: monospace;
+      user-select: none;
+      min-width: 40px;
+      overflow: hidden;
+    }
+    textarea {
+      flex: 1;
+      font-family: monospace;
+      font-size: 1em;
+      border: none;
+      padding: 10px;
+      resize: none;
+      outline: none;
+      overflow: auto; /* allow scroll */
+      min-height: 300px;
+    }
+    .run-btn {
+      background: var(--burnt);
+      color: white;
+      border: none;
+      padding: 14px;
+      cursor: pointer;
+      font-size: 1.1em;
+      align-self: center;
+      margin-top: 10px;
+      border-radius: 6px;
+    }
+    .run-btn:hover {
+      background: var(--gold);
+      color: var(--puce);
+    }
+    pre {
+      flex: 1;
+      padding: 12px;
+      margin: 0;
+      font-family: monospace;
+      white-space: pre; /* preserve formatting */
+      background: #fff;
+      color: var(--puce);
+      overflow: auto; /* scroll output */
+      min-height: 250px; /* taller output */
+    }
+  </style>
+</head>
+<body>
+  <header>⚡ Silky Codes — Top-Bottom Editor</header>
+
+  <div class="editor-section">
+    <!-- Editor -->
+    <div class="editor-wrapper">
+      <div class="section-label">Code</div>
+      <div class="editor-box">
+        <div class="line-numbers" id="lines">1</div>
+        <textarea id="code" oninput="updateLines()"># Write Python code here
+for i in range(1, 6):
+    print("Line", i)</textarea>
+      </div>
+    </div>
+
+    <!-- Run Button -->
+    <button class="run-btn" onclick="runPython()">▶ Run Code</button>
+
+    <!-- Output -->
+    <div class="output">
+      <div class="section-label">Output</div>
+      <pre id="output">Your results will appear here...</pre>
+    </div>
+  </div>
+
+  <script>
+    let pyodideReady = false;
+    async function loadPyodideAndPackages() {
+      window.pyodide = await loadPyodide();
+      pyodideReady = true;
+    }
+    loadPyodideAndPackages();
+
+    function updateLines() {
+      const textarea = document.getElementById('code');
+      const lines = textarea.value.split('\n').length;
+      document.getElementById('lines').innerText =
+        Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+    }
+
+    async function runPython() {
+      const code = document.getElementById("code").value;
+      const outputElement = document.getElementById("output");
+
+      if (!pyodideReady) {
+        outputElement.innerText = "⏳ Python runtime is loading, please wait...";
+        return;
+      }
+
+      try {
+        await pyodide.runPythonAsync(`
+import sys, io
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
+`);
+        await pyodide.runPythonAsync(code);
+
+        const stdout = pyodide.runPython("sys.stdout.getvalue()");
+        const stderr = pyodide.runPython("sys.stderr.getvalue()");
+
+        if (stderr) {
+          outputElement.innerText = "⚠️ Error:\n" + stderr;
+        } else if (stdout) {
+          outputElement.innerText = stdout;
+        } else {
+          outputElement.innerText = "✓ Code executed (no output)";
+        }
+      } catch (err) {
+        outputElement.innerText = "Runtime Error: " + err;
+      }
+    }
+  </script>
+</body>
+</html>
